@@ -1,151 +1,156 @@
-import math as m
-
 import matplotlib.pyplot as pl
+pl.rcParams['legend.loc'] = 'best'
 import numpy as np
 
 
 def build_real_values():
-    num_of_time_steps = 700
+    num_of_time_steps = 702
     dt = 0.2
     t = np.linspace(start=0., stop=num_of_time_steps * dt, num=num_of_time_steps)
-
-    s = np.zeros((num_of_time_steps, 1))
-
-    theta = np.zeros((num_of_time_steps, 1))  # heading
-    theta[0] = m.pi / 4  # initial heading
-
-    alpha = np.zeros((num_of_time_steps, 1))
-    for i in range(100, num_of_time_steps):
-        if i < 200 and i > 100:
-            alpha[i] = m.pi / 40000
-        elif i < 300 and i > 200:
-            alpha[i] = -m.pi / 40000
-        elif i < 400 and i > 300:
-            alpha[i] = - m.pi / 100000
-        elif i < 500 and i > 400:
-            alpha[i] = m.pi / 100000
-        elif i < 600 and i > 500:
-            alpha[i] = m.pi / 2000
-
+    s = np.zeros((num_of_time_steps, 2))
+    v = np.zeros((num_of_time_steps, 2))
+    a_tan = np.zeros((num_of_time_steps, 2))
+    a_r = np.zeros((num_of_time_steps, 2))
+    a = np.zeros((num_of_time_steps, 2))
+    theta = np.zeros((num_of_time_steps, 1))
     omega = np.zeros((num_of_time_steps, 1))
-    for i in range(1, num_of_time_steps):
-        omega[i] = omega[i - 1] + alpha[i] * dt
+    alpha = np.zeros((num_of_time_steps, 1))
 
-    for i in range(1, num_of_time_steps):  # heading profile
-        theta[i] = theta[i - 1] + omega[i] + 1 / 2 * alpha[i] * dt ** 2
+    # Build accelaration profile
+    a_tan[0:10, 0] = np.linspace(0.1, 1.0, num=10)
+    a_tan[0:10, 1] = a_tan[0:10, 0] ** 2
+    a_tan[100:110, 0] = np.linspace(-0.1, -2., num=10)
+    a_tan[100:110, 1] = a_tan[100:110, 0] ** 2
+    a_tan[150:200, 0] = (np.linspace(-2., 8., num=50) ** 2) / 500
+    a_tan[150:200, 1] = (a_tan[150:200, 0] ** 3) / 10
+    a_tan[300:400, 0] = (np.linspace(8., -10., num=100) ** 3) / 1000
+    a_tan[300:400, 1] = (np.linspace(8., -10., num=100) ** 3) / 1000
+    a_tan[500:520, 0] = np.linspace(a_tan[400, 0], -1., num=20) ** 2
+    a_tan[500:600, 1] = np.linspace(a_tan[400, 1], 1., num=100)
+    a_tan[650:700, 0] = -np.linspace(a_tan[600, 0], 0., num=50)
+    a_tan[650:700, 1] = -np.linspace(a_tan[600, 1], 0., num=50)
 
-    v = np.ones((num_of_time_steps, 2))  # constant velocity
-    for i in range(num_of_time_steps):
-        v[i] = [m.cos(theta[i]), m.sin(theta[i])]
+    v = np.cumsum(a_tan, axis=0)  # integrate to gain velocity
+    s = np.cumsum(v, axis=0)  # integrate to gain position
+    theta = np.tanh(np.divide(v[:, 1], v[:, 0]))  # obtain heading from ds or v
+    omega = np.diff(theta, axis=0)  # obtain omega from differentiating theta
+    alpha = np.diff(omega, axis=0)  # obtain alpha from differentiating omega
 
-    s = np.zeros((num_of_time_steps, 2))  # position
-    for i in range(1, num_of_time_steps):
-        s[i] = s[i - 1] + v[i] * theta[i] * dt
-
-    a_t = np.zeros((num_of_time_steps, 2))
-    for i in range(1, num_of_time_steps):
-        a_t[i] = -(v[i] - v[i - 1]) / dt
-
-    dy_dx = np.zeros((num_of_time_steps, 1))
-    for i in range(1, num_of_time_steps):
-        ds = s[i] - s[i - 1]
-        dy_dx[i] = ds[0] / ds[1]
-
-    d2y_dx2 = np.zeros((num_of_time_steps, 1))
-    for i in range(2, num_of_time_steps, 1):
-        d2y_dx2[i] = dy_dx[i] / dy_dx[i - 1]
-
-    #remove first two steps because of deravatives
+    # All array's to the same length
+    t = t[2:num_of_time_steps]
+    s = s[2:num_of_time_steps]
+    v = v[2:num_of_time_steps]
+    a_tan = a_tan[2:num_of_time_steps]
+    a_r = a_r[2:num_of_time_steps]
+    theta = theta[2:num_of_time_steps]
+    omega = omega[1:num_of_time_steps]
     num_of_time_steps -= 2
-    d2y_dx2 = d2y_dx2[2:]
-    dy_dx = dy_dx[2:]
-    a_t = a_t[2:]
-    s = s[2:]
-    v = v[2:]
-    theta = theta[2:]
-    omega = omega[2:]
-    alpha = alpha[2:]
-    t = t[2:]
 
-    rho = np.zeros((num_of_time_steps, 1))
-    a_n = np.zeros((num_of_time_steps, 2))
-    for i in range(num_of_time_steps):
-        rho[i] = m.pow(1 + m.pow(dy_dx[i], 2), 3/2) / m.fabs(d2y_dx2[i])
-
-    a_n = np.divide(np.power(v, 2), rho)
-
-    a = a_t + a_n
-
-
-    pl.figure()
-    pl.quiver(s[:,0], s[:,1],a[:,0], a[:,1])
-    pl.show()
-
+    a = a_tan + a_r  # ignore acceleration due to rotation for now
 
     return [t, dt, s, v, a, theta, omega, alpha]
 
 
-def build_measurement_values(real_values):
-    a_m = np.random.normal(np.mean(real_values[0]), np.max(real_values[0]) / 40, (2, len(real_values[0]))).transpose() + \
+def build_measurement_values(t, real_values):
+    # Add disturbance to accelerated forces
+    a_m = np.random.normal(np.mean(real_values[0]), np.max(real_values[0]) / 100,
+                           (2, len(real_values[0]))).transpose() + \
           real_values[0]
-    omega_m = np.random.normal(np.mean(real_values[1]), np.max(real_values[1]) / 20, (len(real_values[1]), 1)) + \
+
+    # Add disturbance and drift to rotational speed
+    omega_m = np.random.normal(np.mean(real_values[1]), np.max(real_values[1]) / 40, (len(real_values[1]), 1))[:, 0] + \
               real_values[1]
-    return [a_m, omega_m]
+    drift_mu = 5e-2
+    drift_sigma = 1e-3
+    drift = np.ones((real_values[1].size,)) * np.random.normal(drift_mu, drift_sigma)
+    omega_m += drift
+
+    y = np.zeros((t.size, 9, 1))
+    y[:, 4] = np.reshape(a_m[:, 0], (t.size, 1))
+    y[:, 5] = np.reshape(a_m[:, 1], (t.size, 1))
+    y[:, 7] = np.reshape(omega_m, (t.size, 1))
+    return y
+
+
+def build_control_values(t, real_values):
+    u = np.zeros((t.size, 9, 1))
+    u[:, 2] = np.reshape(real_values[:, 0], (t.size, 1))
+    u[:, 3] = np.reshape(real_values[:, 1], (t.size, 1))
+    return u
 
 
 def init_kalman(t, dt):
-    F = np.array([[1., dt, 0, 0., 0., 0.],
-                  [0., 1., 0, 0., 0., 0.],
-                  [0., 0., 0., 0., 0., 0.],
-                  [0., 0., 0., 1., dt, 0.],
-                  [0., 0., 0., 0., 1., 0.],
-                  [0., 0., 0., 0., 0., 0.]])
+    F = np.array([
+        [1., 0., dt, 0., 0.5 * dt ** 2, 0., 0., 0., 0.],
+        [0., 1., 0., dt, 0., 0.5 * dt ** 2, 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0, 0., 0., 0.],
+        [0., 0., 0., 0., 1., 0., 0., 0., 0.],
+        [0., 0., 0., 0., 0., 1., 0., 0., 0.],
+        [0., 0., 0., 0, 0., 0., 1., dt, 0.5 * dt ** 2],
+        [0., 0., 0., 0, 0., 0., 0., 1., dt],
+        [0., 0., 0., 0, 0., 0., 0., 0., 1]
+    ])
 
-    B = np.array([[0., 0, 0.5 * dt ** 2, 0., 0., 0.],
-                  [0., 0., dt, 0., 0., 0.],
-                  [0., 0., 0, 1., 0., 0.],
-                  [0., 0., 0., 0., 0., 0.5 * dt ** 2],
-                  [0., 0., 0., 0., 0., dt],
-                  [0., 0., 0., 0., 0., 1]])
+    B = np.array([
+        [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+        [0., 0., 1., 0., 0., 0., 0., 0., 0.],
+        [0., 0., 0., 1., 0., 0., 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0., 0., 0., 0.]
+    ])
 
-    H = np.array([[0., 0., 0., 0., 0., 0.],
-                  [0., 0., 0., 0., 0., 0.],
-                  [0., 0., 1., 0., 0., 0.],
-                  [0., 0., 0., 0., 0., 0.],
-                  [0., 0., 0., 0., 1., 0.],
-                  [0., 0., 0., 0., 0., 0.]])
+    H = np.array([
+        [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+        [0., 0., 0., 0., 1., 0., 0., 0., 0.],
+        [0., 0., 0., 0., 0., 1., 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0., 0., 1., 0.],
+        [0., 0., 0., 0., 0., 0., 0., 0., 0.]
+    ])
 
-    Q = np.array([[1., 0., 0., 0., 0., 0.],
-                  [0., 1., 0., 0., 0., 0.],
-                  [0., 0., 1., 0., 0., 0.],
-                  [0., 0., 0., 1., 0., 0.],
-                  [0., 0., 0., 0., 1., 0.],
-                  [0., 0., 0., 0., 0., 1.]])
+    Q = np.diag([2e2, 2e2, 0, 0, 0.25, 0.25, 1, 1, 1])
 
-    R = np.array([[1., 0., 0., 0., 0., 0.],
-                  [0., 1., 0., 0., 0., 0.],
-                  [0., 0., 1., 0., 0., 0.],
-                  [0., 0., 0., 1., 0., 0.],
-                  [0., 0., 0., 0., 1., 0.],
-                  [0., 0., 0., 0., 0., 1.]])
-
-    v = np.random.normal(0, 0.25, (t.size, 6, 1))
-    w = np.random.normal(0, 0.25, (t.size, 6, 1))
+    R = np.array([
+        [10., 0., 0., 0., 0., 0., 0., 0., 0.],
+        [0., 10., 0., 0., 0., 0., 0., 0., 0.],
+        [0., 0., 0.0025, 0., 0., 0., 0., 0., 0.],
+        [0., 0., 0., 0.0025, 0., 0., 0., 0., 0.],
+        [0., 0., 0., 0., 0.25, 0., 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0.25, 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0., 1., 0., 0.],
+        [0., 0., 0., 0., 0., 0., 0., 0.5, 0.],
+        [0., 0., 0., 0., 0., 0., 0., 0., 1.]
+    ])
+    v = np.random.normal(0, 25e-3, (t.size, 9, 1))
+    w = np.random.normal(0, 25e-3, (t.size, 9, 1))
     return [F, B, H, Q, R, v, w]
 
 
-def kalman(t, kalman_values, measured_values, error):
-    x = np.zeros((t.size, 6, 1))
-    P = np.array([[error[0] ** 2, 0., 0., 0., 0., 0.],
-                  [0., error[1] ** 2, 0., 0., 0., 0.],
-                  [0., 0., error[2] ** 2, 0., 0., 0.],
-                  [0., 0., 0., error[3] ** 2, 0., 0.],
-                  [0., 0., 0., 0., error[4] ** 2, 0.],
-                  [0., 0., 0., 0., 0., error[5] ** 2]])
+def kalman(t, kalman_values, u, y, error):
+    x = np.zeros((t.size, 9, 1))
+    P = np.zeros((t.size, 9, 9))
+    P[0, :, :] = np.array([
+        [error[0] ** 2, 0., 0., 0., 0., 0., 0., 0., 0.],
+        [0., error[0] ** 2, 0., 0., 0., 0., 0., 0., 0.],
+        [0., 0., error[1] ** 2, 0., 0., 0., 0., 0., 0.],
+        [0., 0., 0., error[1] ** 2, 0., 0., 0., 0., 0.],
+        [0., 0., 0., 0., error[2] ** 2, 0., 0., 0., 0.],
+        [0., 0., 0., 0., 0., error[2] ** 2, 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0., error[3] ** 2, 0., 0.],
+        [0., 0., 0., 0., 0., 0., 0., error[4] ** 2, 0.],
+        [0., 0., 0., 0., 0., 0., 0., 0., error[5] ** 2]
+    ])
 
-    xhat = np.zeros((t.size, 6, 1))
-    z = np.zeros((t.size, 6, 1))
-    y = np.zeros((t.size, 6, 1))
+    xhat = np.zeros((t.size, 9, 1))
+    z = np.zeros((t.size, 9, 1))
 
     F = kalman_values[0]
     B = kalman_values[1]
@@ -155,43 +160,67 @@ def kalman(t, kalman_values, measured_values, error):
     v = kalman_values[5]
     w = kalman_values[6]
 
-    K = np.zeros((t.size, 6, 6))
+    K = np.zeros((t.size, 9, 9))
 
     for k in range(1, t.size):
         # predict state
-        xhat[k] = F * x[k - 1] + B * u[k] + v[k]
-        P[k] = F * P[k - 1] * F.transpose() + Q
+        xhat[k] = F.dot(x[k - 1]) + B.dot(u[k]) + w[k]
+        P[k] = F.dot(P[k - 1]).dot(F.transpose()) + Q
 
         # Measurement
-        z[k] = H * y[k] + w[k]
+        z[k] = H.dot(y[k]) + v[k]
 
         # Update and calculate gain
-        K[k] = P[k] * H.transpose() * np.linalg.inv(H * P[k] * H.transpose() + R)
-        x[k] = xhat[k] + K[k] * (z[k] - H * xhat[k])
+        K[k] = P[k].dot(H.transpose()).dot(np.linalg.inv(H.dot(P[k]).dot(H.transpose()) + R))
+        x[k] = xhat[k] + K[k].dot(z[k] - H.dot(xhat[k]))
 
         # current state
-        P[k] = (np.eye(6) - K[k] * H) * P[k]
-    return x
+        P[k] = (np.eye(9) - K[k].dot(H)).dot(P[k])
+    return [x, K, P, xhat, z]
 
 
-def plot_results(x, real_values, measured_values):
+def plot_results(t, x, s, v, a, theta, omega, alpha, y, K, P, xhat, z):
+    s_err = np.zeros((t.size,1))
+    v_err = np.zeros((t.size,1))
+    a_err = np.zeros((t.size,1))
+    for i in range(1,t.size):
+        s_err[i] = 1. - (s[i,0] / x[i,0])
+        v_err[i] = 1. - (v[i,0] / x[i,2])
+        a_err[i] = 1. - (a[i,0] / x[i,4])
     pl.figure(1)
-    pl.subplot(211)
+    pl.subplot(411)
+    pl.plot(t, a[:,0], label='s')
+    pl.plot(t, x[:, 4], 'x', label='x')
+    pl.plot(t, xhat[:, 4], '.', label='xhat')
+    pl.legend()
+    pl.subplot(412)
+    pl.plot(t, v[:,0], label='s')
+    pl.plot(t, x[:, 2], 'x', label='x')
+    pl.plot(t, xhat[:, 2], '.', label='xhat')
+    pl.legend()
+    pl.subplot(413)
+    pl.plot(t, s[:,0], label='s')
+    pl.plot(t, x[:, 0], 'x', label='x')
+    pl.plot(t, xhat[:, 2], '.', label='xhat')
+    pl.legend()
+    pl.subplot(414)
+    pl.plot(t, P[:,7,7], label='s_err')
+    #pl.plot(t, v_err, label='v_err')
+    #pl.plot(t, a_err, label='a_err')
+    pl.legend()
+    pl.tight_layout()
     pl.show()
 
 
 def main():
     [t, dt, s, v, a, theta, omega, alpha] = build_real_values()
-    [a_m, omega_m] = build_measurement_values([a, omega])
-    [F, B, H, Q, R, v, w] = init_kalman(t, dt)
-    x = kalman([F, B, H, Q, R, v, w], [a_m, omega_m], [0.02, 0.02, 0.04, 0.02, 0.02, 0.04])
-    # plot_results(x, [location, velocity, acceleration, rotation], [acceleration_measurements, rotation_measurements])
-    pl.figure()
-    pl.subplot(211)
-    pl.plot(t, a_m)
-    pl.subplot(212)
-    pl.plot(t, a_m)
-    pl.show()
+    y = build_measurement_values(t, [a, omega])
+    u = build_control_values(t, v)
+    [F, B, H, Q, R, vv, w] = init_kalman(t, dt)
+    error = [2, 0.5, 0.5, 0.5, 0.2, 0.4]
+    kalman_values = [F, B, H, Q, R, vv, w]
+    x, K, P, xhat, z = kalman(t, kalman_values, u, y, error)
+    plot_results(t, x, s, v, a, theta, omega, alpha, y, K, P, xhat, z)
 
 
 if __name__ == '__main__':
