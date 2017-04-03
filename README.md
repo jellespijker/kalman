@@ -1,1 +1,1 @@
-A few tryout scripts for Kalman filters in Matlab
+A few tryout scripts for Kalman filters in Python
