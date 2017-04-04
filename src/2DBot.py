@@ -1,4 +1,5 @@
 import matplotlib.pyplot as pl
+from mpl_toolkits.mplot3d import Axes3D
 pl.rcParams['legend.loc'] = 'best'
 import numpy as np
 
@@ -81,8 +82,8 @@ def build_control_values(t, real_values):
 
 def init_kalman(t, dt):
     F = np.array([
-        [1., 0., dt, 0., 0.5 * dt ** 2, 0., 0., 0., 0.],
-        [0., 1., 0., dt, 0., 0.5 * dt ** 2, 0., 0., 0.],
+        [1., 0., 0., 0., 0.5 * dt ** 2, 0., 0., 0., 0.],
+        [0., 1., 0., 0., 0., 0.5 * dt ** 2, 0., 0., 0.],
         [0., 0., 0., 0., 0., 0., 0., 0., 0.],
         [0., 0., 0., 0., 0., 0, 0., 0., 0.],
         [0., 0., 0., 0., 1., 0., 0., 0., 0.],
@@ -93,8 +94,8 @@ def init_kalman(t, dt):
     ])
 
     B = np.array([
-        [0., 0., 0., 0., 0., 0., 0., 0., 0.],
-        [0., 0., 0., 0., 0., 0., 0., 0., 0.],
+        [0., 0., dt, 0., 0., 0., 0., 0., 0.],
+        [0., 0., 0., dt, 0., 0., 0., 0., 0.],
         [0., 0., 1., 0., 0., 0., 0., 0., 0.],
         [0., 0., 0., 1., 0., 0., 0., 0., 0.],
         [0., 0., 0., 0., 0., 0., 0., 0., 0.],
@@ -116,11 +117,11 @@ def init_kalman(t, dt):
         [0., 0., 0., 0., 0., 0., 0., 0., 0.]
     ])
 
-    Q = np.diag([2e2, 2e2, 0, 0, 0.25, 0.25, 1, 1, 1])
+    Q = np.diag([2, 2, 0, 0, 0.25, 0.25, 1, 1, 1])
 
     R = np.array([
-        [10., 0., 0., 0., 0., 0., 0., 0., 0.],
-        [0., 10., 0., 0., 0., 0., 0., 0., 0.],
+        [1., 0., 0., 0., 0., 0., 0., 0., 0.],
+        [0., 1., 0., 0., 0., 0., 0., 0., 0.],
         [0., 0., 0.0025, 0., 0., 0., 0., 0., 0.],
         [0., 0., 0., 0.0025, 0., 0., 0., 0., 0.],
         [0., 0., 0., 0., 0.25, 0., 0., 0., 0.],
@@ -180,33 +181,44 @@ def kalman(t, kalman_values, u, y, error):
 
 
 def plot_results(t, x, s, v, a, theta, omega, alpha, y, K, P, xhat, z):
-    s_err = np.zeros((t.size,1))
-    v_err = np.zeros((t.size,1))
-    a_err = np.zeros((t.size,1))
-    for i in range(1,t.size):
-        s_err[i] = 1. - (s[i,0] / x[i,0])
-        v_err[i] = 1. - (v[i,0] / x[i,2])
-        a_err[i] = 1. - (a[i,0] / x[i,4])
+    x_ = np.linspace(0, P.shape[1] - 1, P.shape[1])
+    y_ = np.linspace(0, P.shape[1] - 1, P.shape[1])
+    X_, Y_ = np.meshgrid(x_, y_)
+
+    for i in range(0, 700, 50):
+        fig = pl.figure()
+        ax = fig.gca(projection='3d')
+        surf = ax.plot_surface(X_, Y_, P[i], rstride=1, cstride=1, cmap='hot', linewidth=0, antialiased=False)
+        pl.tight_layout()
+        pl.show()
+
+    s_err = np.zeros((t.size, 1))
+    v_err = np.zeros((t.size, 1))
+    a_err = np.zeros((t.size, 1))
+    for i in range(1, t.size):
+        s_err[i] = 1. - (s[i, 0] / x[i, 0])
+        v_err[i] = 1. - (v[i, 0] / x[i, 2])
+        a_err[i] = 1. - (a[i, 0] / x[i, 4])
     pl.figure(1)
     pl.subplot(411)
-    pl.plot(t, a[:,0], label='s')
+    pl.plot(t, a[:, 0], label='a')
     pl.plot(t, x[:, 4], 'x', label='x')
     pl.plot(t, xhat[:, 4], '.', label='xhat')
     pl.legend()
     pl.subplot(412)
-    pl.plot(t, v[:,0], label='s')
+    pl.plot(t, v[:, 0], label='v')
     pl.plot(t, x[:, 2], 'x', label='x')
     pl.plot(t, xhat[:, 2], '.', label='xhat')
     pl.legend()
     pl.subplot(413)
-    pl.plot(t, s[:,0], label='s')
+    pl.plot(t, s[:, 0], label='s')
     pl.plot(t, x[:, 0], 'x', label='x')
     pl.plot(t, xhat[:, 2], '.', label='xhat')
     pl.legend()
     pl.subplot(414)
-    pl.plot(t, P[:,7,7], label='s_err')
-    #pl.plot(t, v_err, label='v_err')
-    #pl.plot(t, a_err, label='a_err')
+    pl.plot(t, s_err, label='s_err')
+    pl.plot(t, v_err, label='v_err')
+    pl.plot(t, a_err, label='a_err')
     pl.legend()
     pl.tight_layout()
     pl.show()
