@@ -134,7 +134,6 @@ def plot_results(t, x, s, v, a, u, y, K, P, xhat, z):
     datSpeed[:, 1] = x[:, 1]
     np.savetxt('fallingBallSpeed.dat', datSpeed, delimiter=',')
 
-
 def main():
     [t, dt, s, v, a] = build_real_values()
     z = build_measurement_values(t, s)

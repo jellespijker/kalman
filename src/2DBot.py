@@ -142,7 +142,7 @@ def init_kalman(t, dt):
         [0., 0., 0.],
         [0., 0., 0.],
     ])
-    v = np.random.normal(0, 25e-3, (t.size, 9, 1))
+    v = np.random.normal(0, 25e-3, (t.size, 3, 1))
     w = np.random.normal(0, 25e-3, (t.size, 9, 1))
     return [F, B, H, Q, R, v, w]
 
@@ -179,7 +179,7 @@ def kalman(t, kalman_values, u, z, error):
         xhat[k] = dot(F, x[k - 1]) + dot(B, u[k]) + w[k]
         Phat = dot(F, dot(P[k - 1], F.T)) + Q
 
-        y[k] = z[k] - dot(H.T, xhat[k])
+        y[k] = z[k] - dot(H.T, xhat[k]) + v[k]
 
         S = dot(H.T, dot(Phat, H)) + R
         S = np.linalg.inv(S)
