@@ -123,15 +123,17 @@ def plot_results(t, x, s, v, a, u, y, K, P, xhat, z):
     pl.show()
 
     # save csv
-    datPos = np.zeros((t.size, 3, 1))
-    datPos[:, 0] = s
-    datPos[:, 1] = z[:, 0]
-    datPos[:, 2] = y[:, 0]
+    datPos = np.zeros((t.size, 4, 1))
+    datPos[:, 0] = t.reshape((t.size, 1))
+    datPos[:, 1] = s
+    datPos[:, 2] = z[:, 0]
+    datPos[:, 3] = y[:, 0]
     np.savetxt('fallingBallPos.dat', datPos, delimiter=',')
 
-    datSpeed = np.zeros((t.size, 2, 1))
-    datSpeed[:, 0] = v
-    datSpeed[:, 1] = x[:, 1]
+    datSpeed = np.zeros((t.size, 3, 1))
+    datSpeed[:, 0] = t.reshape((t.size, 1))
+    datSpeed[:, 1] = v
+    datSpeed[:, 2] = x[:, 1]
     np.savetxt('fallingBallSpeed.dat', datSpeed, delimiter=',')
 
 def main():
