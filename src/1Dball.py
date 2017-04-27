@@ -108,9 +108,8 @@ def plot_results(t, x, s, v, a, u, y, K, P, xhat, z):
     pl.figure()
     pl.subplot(311)
     pl.plot(s)
-    pl.plot(xhat[:, 0], 'o')
-    pl.plot(x[:, 0])
-    pl.plot(y[:, 0], '.')
+    pl.plot(x[:, 0], '+')
+    pl.plot(z[:, 0], '.')
     pl.subplot(312)
     pl.plot(v)
     pl.plot(xhat[:, 1], 'o')
@@ -126,8 +125,8 @@ def plot_results(t, x, s, v, a, u, y, K, P, xhat, z):
     datPos = np.zeros((t.size, 4, 1))
     datPos[:, 0] = t.reshape((t.size, 1))
     datPos[:, 1] = s
-    datPos[:, 2] = z[:, 0]
-    datPos[:, 3] = x[:, 0]
+    datPos[:, 2] = x[:, 0]
+    datPos[:, 3] = z[:, 0]
     np.savetxt('fallingBallPos.dat', datPos, delimiter=',')
 
     datSpeed = np.zeros((t.size, 3, 1))
