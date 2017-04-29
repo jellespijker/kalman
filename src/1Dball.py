@@ -3,6 +3,7 @@ import matplotlib.pyplot as pl
 pl.rcParams['legend.loc'] = 'best'
 import numpy as np
 from numpy import dot
+from scipy.linalg import inv
 
 
 def build_real_values():
@@ -23,7 +24,7 @@ def build_real_values():
 
 def build_measurement_values(t, S):
     y = np.zeros((t.size, 2, 1))
-    S_m = np.random.normal(1, 20, (len(S), 1)) + S
+    S_m = np.random.normal(0., 50, (len(S), 1)) + S
     y[:, 0] = S_m
     return y
 
@@ -34,7 +35,7 @@ def build_control_values(t, a):
 
 
 def init_kalman(t, dt):
-    phi_s = 5e-3
+    phi_s = 5
 
     F = np.array([
         [1., dt],
@@ -57,11 +58,11 @@ def init_kalman(t, dt):
     ]) * phi_s
 
     R = np.array([
-        [5.0, 0.0],
-        [0.0, 5.0e-9]
+        [40**2, 0.0],
+        [0.0, 15**2]
     ])
-    v = np.random.normal(0, 25e-3, (t.size, 2, 1))
-    w = np.random.normal(0, 25e-3, (t.size, 2, 1))
+    v = np.random.normal(0, 25e-2, (t.size, 2, 1))
+    w = np.random.normal(0, 25e-2, (t.size, 2, 1))
     return [F, B, H, Q, R, v, w]
 
 
@@ -101,49 +102,69 @@ def kalman(t, kalman_values, u, z, error):
     return [x, K, P, xhat, z]
 
 
-def plot_results(t, x, s, v, a, u, y, K, P, xhat, z):
-    res_s = np.reshape(s[:, 0], (t.size, 1)) - x[:, 0]
-    res_v = np.reshape(v[:, 0], (t.size, 1)) - x[:, 1]
+def NEES(xs, est_xs, ps):
+    est_err = xs - est_xs
+    err = np.zeros(xs[:, 0].size)
+    i = 0
+    for x, p in zip(est_err, ps):
+        err[i] = (np.dot(x.T, inv(p)).dot(x))
+        i += 1
+    return err
 
+
+def plot_results(t, x, xground, a, u, y, K, P, xhat, z, nees):
     pl.figure()
     pl.subplot(311)
-    pl.plot(s)
+    pl.plot(xground[:, 0])
     pl.plot(x[:, 0], '+')
     pl.plot(z[:, 0], '.')
     pl.subplot(312)
-    pl.plot(v)
+    pl.plot(xground[:, 1])
     pl.plot(xhat[:, 1], 'o')
     pl.plot(x[:, 1])
     pl.subplot(313)
-    pl.plot(res_s)
-    pl.plot(res_v)
+    pl.plot(nees)
     pl.tight_layout()
     pl.savefig('fallingBall.png')
     pl.show()
 
+
+def save_results(t, xground, x, z, nees):
     # save csv
     datPos = np.zeros((t.size, 4, 1))
     datPos[:, 0] = t.reshape((t.size, 1))
-    datPos[:, 1] = s
+    datPos[:, 1] = xground[:, 0]
     datPos[:, 2] = x[:, 0]
     datPos[:, 3] = z[:, 0]
     np.savetxt('fallingBallPos.dat', datPos, delimiter=',')
 
     datSpeed = np.zeros((t.size, 3, 1))
     datSpeed[:, 0] = t.reshape((t.size, 1))
-    datSpeed[:, 1] = v
+    datSpeed[:, 1] = xground[:, 1]
     datSpeed[:, 2] = x[:, 1]
     np.savetxt('fallingBallSpeed.dat', datSpeed, delimiter=',')
+
+    datNEES = np.zeros((t.size, 2, 1))
+    datNEES[:, 0] = t.reshape((t.size, 1))
+    datNEES[:, 1] = nees.reshape(t.size, 1)
+    np.savetxt('fallingBall_NEES.dat', datNEES)
+
 
 def main():
     [t, dt, s, v, a] = build_real_values()
     z = build_measurement_values(t, s)
     u = build_control_values(t, a)
     [F, B, H, Q, R, vv, w] = init_kalman(t, dt)
-    error = [2.5, 2.5]
+    error = [40, 10]
     kalman_values = [F, B, H, Q, R, vv, w]
     x, K, P, xhat, y = kalman(t, kalman_values, u, z, error)
-    plot_results(t, x, s, v, a, u, y, K, P, xhat, y)
+    xground = np.zeros(x.shape)
+    xground[:, 0] = s
+    xground[:, 1] = v
+    nees = NEES(xground, x, P)
+    print(np.mean(nees))
+    save_results(t, xground, x, z, nees)
+    plot_results(t, x, xground, a, u, y, K, P, xhat, y, nees)
 
 
 if __name__ == '__main__':
