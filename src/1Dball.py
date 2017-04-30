@@ -144,10 +144,14 @@ def save_results(t, xground, x, z, nees):
     datSpeed[:, 2] = x[:, 1]
     np.savetxt('fallingBallSpeed.dat', datSpeed, delimiter=',')
 
-    datNEES = np.zeros((t.size, 2, 1))
-    datNEES[:, 0] = t.reshape((t.size, 1))
-    datNEES[:, 1] = nees.reshape(t.size, 1)
-    np.savetxt('fallingBall_NEES.dat', datNEES)
+    datNEES = np.zeros((t.size + 1, 2, 1))
+    datNEES[0:t.size, 0] = t.reshape((t.size, 1))
+    datNEES[0:t.size, 1] = nees.reshape(t.size, 1)
+    datNEES[-1, 0] = t[-1]
+    datNEES[-1, 1] = 0.0
+    np.savetxt('fallingBall_NEES.dat', datNEES, delimiter=',')
+
+    np.savetxt('fallingBall_meanNEES.dat', [np.mean(nees)], delimiter=',')
 
 
 def main():
